@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: production-infra
+  name: infra
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -14,7 +14,7 @@ spec:
     path: infra
   destination:
     server: https://kubernetes.default.svc
-    namespace: production
+    namespace: infra
   syncPolicy:
     automated:
       selfHeal: true
