@@ -1,0 +1,12 @@
+github:
+  organization: devopsparadox
+  repository: my-app
+application:
+  name: my-app
+  host: acme.com
+database:
+  version: 14
+  size: small # small, medium, large
+image:
+  repository: docker.io/vfarcic
+hyperscaler: google # google, aws

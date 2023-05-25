@@ -1,0 +1,12 @@
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: Repository
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    owner: {{ .Values.github.organization }}
+    repo: {{ .Values.github.repository }}
+spec:
+  forProvider:
+    autoInit: true
+    visibility: public

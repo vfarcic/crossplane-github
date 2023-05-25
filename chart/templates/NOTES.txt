@@ -1,0 +1,3 @@
+Repository {{ .Release.Name }} has been created.
+
+$ gh repo view {{ .Values.github.organization }}/{{ .Release.Name }} --web

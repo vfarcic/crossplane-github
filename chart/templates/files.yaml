@@ -1,32 +1,8 @@
 ---
 apiVersion: repo.github.upbound.io/v1alpha1
-kind: Repository
-metadata:
-  name: test
-  labels:
-    owner: devopsparadox
-    repo: test
-spec:
-  forProvider:
-    autoInit: true
-    visibility: public
-# ---
-# apiVersion: repo.github.upbound.io/v1alpha1
-# kind: DefaultBranch
-# metadata:
-#   name: test-main
-# spec:
-#   forProvider:
-#     branch: main
-#     branchSelector:
-#       matchLabels:
-#         repo: test
-#         branch: main
----
-apiVersion: repo.github.upbound.io/v1alpha1
 kind: RepositoryFile
 metadata:
-  name: test-main-go
+  name: {{ .Release.Name }}-main-go
 spec:
   forProvider:
     content: |
@@ -57,13 +33,13 @@ spec:
     file: main.go
     repositorySelector:
       matchLabels:
-        owner: devopsparadox
-        repo: test
+        owner: {{ .Values.github.organization }}
+        repo: {{ .Values.github.repository }}
 ---
 apiVersion: repo.github.upbound.io/v1alpha1
 kind: RepositoryFile
 metadata:
-  name: test-dockerfile
+  name: {{ .Release.Name }}-dockerfile
 spec:
   forProvider:
     content: |
@@ -71,24 +47,24 @@ spec:
       ADD . /src
       WORKDIR /src
       RUN go get -d -v -t
-      RUN GOOS=linux GOARCH=amd64 go build -v -o [[.AppName]] 
+      RUN GOOS=linux GOARCH=amd64 go build -v -o {{ .Values.application.name }}
 
       FROM alpine:3.17.3
       EXPOSE 8080
-      CMD ["[[.AppName]]"]
+      CMD ["{{ .Values.application.name }}"]
       ENV VERSION 1.1.4
-      COPY --from=build /src/[[.AppName]] /usr/local/bin/[[.AppName]]
-      RUN chmod +x /usr/local/bin/[[.AppName]]
+      COPY --from=build /src/{{ .Values.application.name }} /usr/local/bin/{{ .Values.application.name }}
+      RUN chmod +x /usr/local/bin/{{ .Values.application.name }}
     file: Dockerfile
     repositorySelector:
       matchLabels:
-        owner: devopsparadox
-        repo: test
+        owner: {{ .Values.github.organization }}
+        repo: {{ .Values.github.repository }}
 ---
 apiVersion: repo.github.upbound.io/v1alpha1
 kind: RepositoryFile
 metadata:
-  name: test-kustomize-production-kustomization
+  name: {{ .Release.Name }}-kustomize-production-kustomization
 spec:
   forProvider:
     content: |
@@ -101,13 +77,13 @@ spec:
     file: kustomize/overlays/production/kustomization.yaml
     repositorySelector:
       matchLabels:
-        owner: devopsparadox
-        repo: test
+        owner: {{ .Values.github.organization }}
+        repo: {{ .Values.github.repository }}
 ---
 apiVersion: repo.github.upbound.io/v1alpha1
 kind: RepositoryFile
 metadata:
-  name: test-kustomize-base-schema
+  name: {{ .Release.Name }}-kustomize-base-schema
 spec:
   forProvider:
     content: |
@@ -115,7 +91,7 @@ spec:
       apiVersion: databases.schemahero.io/v1alpha4
       kind: Database
       metadata:
-        name: [[.AppName]]
+        name: {{ .Values.application.name }}
       spec:
         immediateDeploy: true
         connection:
@@ -132,14 +108,14 @@ spec:
             port:
               value: "5432"
             dbname:
-              value: [[.AppName]]
+              value: {{ .Values.application.name }}
       ---
       apiVersion: schemas.schemahero.io/v1alpha4
       kind: Table
       metadata:
-        name: [[.AppName]]-videos
+        name: {{ .Values.application.name }}-videos
       spec:
-        database: [[.AppName]]
+        database: {{ .Values.application.name }}
         name: videos
         schema:
           postgres:
@@ -157,13 +133,13 @@ spec:
     file: kustomize/base/schema.yaml
     repositorySelector:
       matchLabels:
-        owner: devopsparadox
-        repo: test
+        owner: {{ .Values.github.organization }}
+        repo: {{ .Values.github.repository }}
 ---
 apiVersion: repo.github.upbound.io/v1alpha1
 kind: RepositoryFile
 metadata:
-  name: test-kustomize-base-kustomization
+  name: {{ .Release.Name }}-kustomize-base-kustomization
 spec:
   forProvider:
     content: |
@@ -175,13 +151,13 @@ spec:
     file: kustomize/base/kustomization.yaml
     repositorySelector:
       matchLabels:
-        owner: devopsparadox
-        repo: test
+        owner: {{ .Values.github.organization }}
+        repo: {{ .Values.github.repository }}
 ---
 apiVersion: repo.github.upbound.io/v1alpha1
 kind: RepositoryFile
 metadata:
-  name: test-kustomize-base-app
+  name: {{ .Release.Name }}-kustomize-base-app
 spec:
   forProvider:
     content: |
@@ -190,25 +166,25 @@ spec:
       kind: AppClaim
       metadata:
         annotations:
-          gitHubOrg: [[.GitHubOrg]]
-          gitHubRepo: [[.AppName]]
-        name: [[.AppName]]
+          gitHubOrg: {{ .Values.github.organization }}
+          gitHubRepo: {{ .Values.application.name }}
+        name: {{ .Values.application.name }}
       spec:
-        id: [[.AppName]]
+        id: {{ .Values.application.name }}
         compositionSelector:
           matchLabels:
-            type: backend-db-google
+            type: {{ .Values.hyperscaler }}
             location: local
         parameters:
-          namespace: development
-          image: [[.ImageRepo]]/[[.AppName]]:latest
+          namespace: {{ .Release.Namespace }}
+          image: {{ .Values.image.repository }}/{{ .Values.application.name }}:latest
           port: 8080
-          host: [[.Host]]
+          host: {{ .Values.application.host }}
           db:
-            version: "[[.DbVersion]]"
-            size: [[.DbSize]]
+            version: "{{ .Values.database.version }}"
+            size: {{ .Values.database.size }}
     file: kustomize/base/app.yaml
     repositorySelector:
       matchLabels:
-        owner: devopsparadox
-        repo: test
+        owner: {{ .Values.github.organization }}
+        repo: {{ .Values.github.repository }}
