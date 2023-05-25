@@ -12,6 +12,7 @@ spec:
     targetRevision: HEAD
     path: chart
     helm:
+      releaseName: silly-demo
       parameters:
         - name: github.repository
           value: silly-demo
