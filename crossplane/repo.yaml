@@ -1,0 +1,214 @@
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: Repository
+metadata:
+  name: test
+  labels:
+    owner: devopsparadox
+    repo: test
+spec:
+  forProvider:
+    autoInit: true
+    visibility: public
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: DefaultBranch
+metadata:
+  name: test-main
+spec:
+  forProvider:
+    branch: main
+    branchSelector:
+      matchLabels:
+        repo: test
+        branch: main
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: RepositoryFile
+metadata:
+  name: test-main-go
+spec:
+  forProvider:
+    content: |
+      package main
+
+      import (
+              "fmt"
+              "net/http"
+              "os"
+
+              "github.com/gin-gonic/gin"
+      )
+
+      func main() {
+              router := gin.New()
+              router.GET("/", rootHandler)
+              port := os.Getenv("PORT")
+              if len(port) == 0 {
+                      port = "8080"
+              }
+              router.Run(fmt.Sprintf(":%s", port))
+      }
+
+      func rootHandler(ctx *gin.Context) {
+              output := "This is silly. Convert it into something great!"
+              ctx.String(http.StatusOK, output)
+      }
+    file: main.go
+    repositorySelector:
+      matchLabels:
+        owner: devopsparadox
+        repo: test
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: RepositoryFile
+metadata:
+  name: test-dockerfile
+spec:
+  forProvider:
+    content: |
+      FROM golang:1.20-alpine AS build
+      ADD . /src
+      WORKDIR /src
+      RUN go get -d -v -t
+      RUN GOOS=linux GOARCH=amd64 go build -v -o [[.AppName]] 
+
+      FROM alpine:3.17.3
+      EXPOSE 8080
+      CMD ["[[.AppName]]"]
+      ENV VERSION 1.1.4
+      COPY --from=build /src/[[.AppName]] /usr/local/bin/[[.AppName]]
+      RUN chmod +x /usr/local/bin/[[.AppName]]
+    file: Dockerfile
+    repositorySelector:
+      matchLabels:
+        owner: devopsparadox
+        repo: test
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: RepositoryFile
+metadata:
+  name: test-kustomize-production-kustomization
+spec:
+  forProvider:
+    content: |
+      apiVersion: kustomize.config.k8s.io/v1beta1
+      kind: Kustomization
+      resources:
+        - ../../base
+      patches:
+      - path: app-patch.yaml
+    file: kustomize/overlays/production/kustomization.yaml
+    repositorySelector:
+      matchLabels:
+        owner: devopsparadox
+        repo: test
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: RepositoryFile
+metadata:
+  name: test-kustomize-base-schema
+spec:
+  forProvider:
+    content: |
+      ---
+      apiVersion: databases.schemahero.io/v1alpha4
+      kind: Database
+      metadata:
+        name: [[.AppName]]
+      spec:
+        immediateDeploy: true
+        connection:
+          postgres:
+            host:
+              value: postgresql
+            user:
+              value: postgres
+            password:
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql
+                  key: postgres-password
+            port:
+              value: "5432"
+            dbname:
+              value: [[.AppName]]
+      ---
+      apiVersion: schemas.schemahero.io/v1alpha4
+      kind: Table
+      metadata:
+        name: [[.AppName]]-videos
+      spec:
+        database: [[.AppName]]
+        name: videos
+        schema:
+          postgres:
+            primaryKey:
+            - id
+            columns:
+            - name: id
+              type: text
+              constraints:
+                notNull: true
+            - name: title
+              type: text
+              constraints:
+                notNull: true
+    file: kustomize/base/schema.yaml
+    repositorySelector:
+      matchLabels:
+        owner: devopsparadox
+        repo: test
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: RepositoryFile
+metadata:
+  name: test-kustomize-base-kustomization
+spec:
+  forProvider:
+    content: |
+      apiVersion: kustomize.config.k8s.io/v1beta1
+      kind: Kustomization
+      resources:
+        - app.yaml
+        - schema.yaml
+    file: kustomize/base/kustomization.yaml
+    repositorySelector:
+      matchLabels:
+        owner: devopsparadox
+        repo: test
+---
+apiVersion: repo.github.upbound.io/v1alpha1
+kind: RepositoryFile
+metadata:
+  name: test-kustomize-base-app
+spec:
+  forProvider:
+    content: |
+      ---
+      apiVersion: devopstoolkitseries.com/v1alpha1
+      kind: AppClaim
+      metadata:
+        annotations:
+          gitHubOrg: [[.GitHubOrg]]
+          gitHubRepo: [[.AppName]]
+        name: [[.AppName]]
+      spec:
+        id: [[.AppName]]
+        compositionSelector:
+          matchLabels:
+            type: backend-db-google
+            location: local
+        parameters:
+          namespace: development
+          image: [[.ImageRepo]]/[[.AppName]]:latest
+          port: 8080
+          host: [[.Host]]
+          db:
+            version: "[[.DbVersion]]"
+            size: [[.DbSize]]
+    file: kustomize/base/app.yaml
+    repositorySelector:
+      matchLabels:
+        owner: devopsparadox
+        repo: test
