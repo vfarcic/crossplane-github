@@ -2,22 +2,23 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: silly-demo-repo
+  namespace: argocd
   finalizers:
-  - resources-finalizer.argocd.argoproj.io
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: production
   source:
-    repoURL: https://github.com/vfarcic/crossplane-github.git
+    repoURL: https://github.com/vfarcic/crossplane-github
     targetRevision: HEAD
     path: chart
     helm:
       parameters:
-      - name: github.repository
-        value: silly-demo
-      - name: application.name
-        value: silly-demo
-      - name: application.host
-        value: silly-demo.acme.com
+        - name: github.repository
+          value: silly-demo
+        - name: application.name
+          value: silly-demo
+        - name: application.host
+          value: silly-demo.acme.com
   destination:
     server: https://kubernetes.default.svc
     namespace: infra
