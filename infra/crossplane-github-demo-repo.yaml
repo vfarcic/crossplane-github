@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-github-demo-repo
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: production
+  source:
+    repoURL: https://github.com/vfarcic/crossplane-github
+    targetRevision: HEAD
+    path: chart
+    helm:
+      releaseName: crossplane-github-demo
+      parameters:
+        - name: github.repository
+          value: crossplane-github-demo
+        - name: application.name
+          value: crossplane-github-demo
+        - name: application.host
+          value: crossplane-github-demo.acme.com
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: infra
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+      allowEmpty: true
