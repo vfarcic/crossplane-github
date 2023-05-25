@@ -59,43 +59,29 @@ kubectl get ingressclasses --output name
 
 INGRESS_CLASS=$(kubectl get ingressclasses --output jsonpath="{.items[0].metadata.name}")
 
-yq --inplace \
-    ".server.ingress.hosts[0] = \"argocd.$INGRESS_HOST.nip.io\"" \
-    argocd/helm-values.yaml
+yq --inplace ".server.ingress.hosts[0] = \"argocd.$INGRESS_HOST.nip.io\"" argocd/helm-values.yaml
 
-yq --inplace \
-    ".server.ingress.ingressClassName = \"$INGRESS_CLASS\"" \
-    argocd/helm-values.yaml
+yq --inplace ".server.ingress.ingressClassName = \"$INGRESS_CLASS\"" argocd/helm-values.yaml
 
-helm upgrade --install argocd argo-cd \
-    --repo https://argoproj.github.io/argo-helm \
-    --namespace argocd --create-namespace \
-    --values argocd/helm-values.yaml --wait
+helm upgrade --install argocd argo-cd --repo https://argoproj.github.io/argo-helm --namespace argocd --create-namespace --values argocd/helm-values.yaml --wait
 
 kubectl apply --filename argocd/project.yaml
 
-yq --inplace \
-    ".spec.source.repoURL = \"https://github.com/$GITHUB_ORG/crossplane-github\"" \
-    argocd/apps.yaml
+yq --inplace ".spec.source.repoURL = \"https://github.com/$GITHUB_ORG/crossplane-github\"" argocd/apps.yaml
 
-yq --inplace \
-    ".spec.source.repoURL = \"https://github.com/$GITHUB_ORG/crossplane-github\"" \
-    argocd/silly-demo-repo.yaml
+yq --inplace ".spec.source.repoURL = \"https://github.com/$GITHUB_ORG/crossplane-github\"" argocd/crossplane-github-demo-repo.yaml
 
 kubectl apply --filename argocd/apps.yaml
 
-helm repo add crossplane-stable \
-    https://charts.crossplane.io/stable
+helm repo add crossplane-stable https://charts.crossplane.io/stable
 
 helm repo update
 
-helm upgrade --install crossplane crossplane-stable/crossplane \
-    --namespace crossplane-system --create-namespace --wait
+helm upgrade --install crossplane crossplane-stable/crossplane --namespace crossplane-system --create-namespace --wait
 
 kubectl apply --filename crossplane-config/provider-github.yaml
 
-kubectl wait --for=condition=healthy provider.pkg.crossplane.io \
-    --all --timeout=300s
+kubectl wait --for=condition=healthy provider.pkg.crossplane.io --all --timeout=300s
 
 echo "apiVersion: v1
 kind: Secret
@@ -110,8 +96,7 @@ stringData:
     }
 " | kubectl --namespace crossplane-system apply --filename -
 
-kubectl apply \
-    --filename crossplane-config/provider-config-github.yaml
+kubectl apply --filename crossplane-config/provider-config-github.yaml
 
 kubectl create namespace infra
 
@@ -127,17 +112,13 @@ data:
   kubeconfig: $(cat -n $KUBECONFIG | base64)
 " | kubectl --namespace infra apply --filename -
 
-yq --inplace \
-    ".github.organization = \"$GITHUB_ORG\"" \
-    chart/values.yaml
+yq --inplace ".github.organization = \"$GITHUB_ORG\"" chart/values.yaml
 
 ###########
 # The End #
 ###########
 
-gum style \
-	--foreground 212 --border-foreground 212 --border double \
-	--margin "1 2" --padding "2 4" \
+gum style --foreground 212 --border-foreground 212 --border double --margin "1 2" --padding "2 4" \
 	'The setup is almost finished.' \
     '
 Execute "source .env" to set the environment variables.'
