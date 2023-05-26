@@ -20,6 +20,8 @@ spec:
           value: crossplane-github-demo
         - name: application.host
           value: crossplane-github-demo.acme.com
+        - name: hyperscaler
+          value: aws
   destination:
     server: https://kubernetes.default.svc
     namespace: infra
