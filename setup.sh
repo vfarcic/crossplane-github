@@ -49,7 +49,6 @@ GITHUB_TOKEN=$(gum input --placeholder "Please enter GitHub organization admin t
 
 if [ -z "$DO_NOT_FORK" ]; then
     gh repo fork vfarcic/crossplane-github --clone --remote --org ${GITHUB_ORG}
-    cd crossplane-github
 fi
 
 INGRESS_HOST=$(gum input --placeholder "External IP of the Ingress service" --value "127.0.0.1")
@@ -59,19 +58,19 @@ kubectl get ingressclasses --output name
 
 INGRESS_CLASS=$(kubectl get ingressclasses --output jsonpath="{.items[0].metadata.name}")
 
-yq --inplace ".server.ingress.hosts[0] = \"argocd.$INGRESS_HOST.nip.io\"" argocd/helm-values.yaml
+yq --inplace ".server.ingress.hosts[0] = \"argocd.$INGRESS_HOST.nip.io\"" crossplane-github/argocd/helm-values.yaml
 
-yq --inplace ".server.ingress.ingressClassName = \"$INGRESS_CLASS\"" argocd/helm-values.yaml
+yq --inplace ".server.ingress.ingressClassName = \"$INGRESS_CLASS\"" crossplane-github/argocd/helm-values.yaml
 
-helm upgrade --install argocd argo-cd --repo https://argoproj.github.io/argo-helm --namespace argocd --create-namespace --values argocd/helm-values.yaml --wait
+helm upgrade --install argocd argo-cd --repo https://argoproj.github.io/argo-helm --namespace argocd --create-namespace --values crossplane-github/argocd/helm-values.yaml --wait
 
-kubectl apply --filename argocd/project.yaml
+kubectl apply --filename crossplane-github/argocd/project.yaml
 
-yq --inplace ".spec.source.repoURL = \"https://github.com/$GITHUB_ORG/crossplane-github\"" argocd/apps.yaml
+yq --inplace ".spec.source.repoURL = \"https://github.com/$GITHUB_ORG/crossplane-github\"" crossplane-github/argocd/apps.yaml
 
-yq --inplace ".spec.source.repoURL = \"https://github.com/$GITHUB_ORG/crossplane-github\"" argocd/crossplane-github-demo-repo.yaml
+yq --inplace ".spec.source.repoURL = \"https://github.com/$GITHUB_ORG/crossplane-github\"" crossplane-github/argocd/crossplane-github-demo-repo.yaml
 
-kubectl apply --filename argocd/apps.yaml
+kubectl apply --filename crossplane-github/argocd/apps.yaml
 
 helm repo add crossplane-stable https://charts.crossplane.io/stable
 
@@ -79,7 +78,7 @@ helm repo update
 
 helm upgrade --install crossplane crossplane-stable/crossplane --namespace crossplane-system --create-namespace --wait
 
-kubectl apply --filename crossplane-config/provider-github.yaml
+kubectl apply --filename crossplane-github/crossplane-config/provider-github.yaml
 
 kubectl wait --for=condition=healthy provider.pkg.crossplane.io --all --timeout=300s
 
@@ -96,7 +95,7 @@ stringData:
     }
 " | kubectl --namespace crossplane-system apply --filename -
 
-kubectl apply --filename crossplane-config/provider-config-github.yaml
+kubectl apply --filename crossplane-github/crossplane-config/provider-config-github.yaml
 
 kubectl create namespace infra
 
@@ -112,7 +111,15 @@ data:
   kubeconfig: $(cat -n $KUBECONFIG | base64)
 " | kubectl --namespace infra apply --filename -
 
-yq --inplace ".github.organization = \"$GITHUB_ORG\"" chart/values.yaml
+yq --inplace ".github.organization = \"$GITHUB_ORG\"" crossplane-github/chart/values.yaml
+
+cd crossplane-github
+
+git add .
+
+git commit -m "Modifications"
+
+git push
 
 ###########
 # The End #
